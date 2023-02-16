@@ -32,7 +32,7 @@
 <div>
 
 <h2 align="middle">Overview</h2>
-<p>Throughout this project, we primarily focused on ensuring we had a good conceptual grasp of the details of pixel sampling, rasterizing, etc. The math element of this class was new to us both, which was a welcome challenge. </p>
+<p>In this project, we first implemented a basic triangle rasterization function. After this, to improve it, we added supersampling, with the ability to handle multiple different sample rates. We also implemented transformations, to help us translate, scale, and rotate shapes. After this, we added the usage of barycentric coordinates to rasterize interpolated colored triangles, using the coordinate system to find the appropriate color for each point. In the last two tasks, we implemented nearest and bilinear sampling for the purpose of texture mapping, and after this added the ability to sample different mipmap levels. We hit a few obstacles along the way that were difficult to resolve, but once we did we found it very rewarding to be implementing all of the concepts which we’ve been learning these last few weeks. </p>
 <br>
 <h2 align="middle">Section I: Rasterization</h2>
 
@@ -50,8 +50,7 @@
 <br>
 <h3 align="middle">Part 2: Antialiasing triangles</h3>
 
-    <p>Every time that we resize the sample buffer, we now resize it to (width * height * sample_rate) as opposed to simply (height * width). This allows us to have sample_rate samples per pixel instead of just one. For each of our pixels, we sample at the center of each of sample_rate separations. If our triangle falls into this piece of the pixel, then we color the sample buffer allocation for that fraction of the pixel the given color. Once we loop through all of the pixels, we move our data from the sample buffer into the frame buffer to be rendered, taking the average color of every sample_rate spaces in the frame buffer and assigning that color to the pixel pertaining to those sample_rate samples in the frame buffer. Supersampling is useful to reduce jaggies, helping us antialias. Other modifications made to the rasterization pipeline include resizing the sample to (width * height * sample_rate) as opposed to simply (height * width) every time the change is necessary. We changed resolve_to_framebuffer to properly deal with the resized sample buffer and average the colors. Finally, we also changed fill pixel, to rasterize points and lines normally, without supersampling, while also being able to account for the new sample buffer size.</p>
-
+  <p>Every time that we resize the sample buffer, we now resize it to (width * height * sample_rate) as opposed to simply (height * width). This allows us to have sample_rate samples per pixel instead of just one. For each of our pixels, we sample at the center of each of sample_rate separations. If our triangle falls into this piece of the pixel, then we color the sample buffer allocation for that fraction of the pixel the given color. Once we loop through all of the pixels, we move our data from the sample buffer into the frame buffer to be rendered, taking the average color of every sample_rate spaces in the frame buffer and assigning that color to the pixel pertaining to those sample_rate samples in the frame buffer. Supersampling is useful to reduce jaggies, helping us antialias. Modifications made to the rasterization pipeline include the aforementioned resizing of the sample buffer to (width * height * sample_rate). We also changed resolve_to_framebuffer to properly deal with the resized sample buffer and average the colors. The last big change was to fill_pixel, which enabled it to rasterize points and lines normally, without supersampling, while also being able to account for the new sample buffer size.</p>
 
   <div align="middle">
     <table style="width=100%">
@@ -81,6 +80,7 @@
 
 <br>
 <h3 align="middle">Part 3: Transforms</h3>
+  <p>Implementing the transformations just involved creating three different Matrix3x3 objects, once for translation, one for scaling, and one for rotation, all of which were implemented with homogenous coordinates.</p>
   <div align="middle">
     <td>
       <img src="images/task3.png" align="middle" width="950px"/>
@@ -88,13 +88,13 @@
     </td>
   </div>
   <br>
-
-  <p>In this image, we tried getting Cubeman to do the splits with its arms raised. We also made it all blue instead of red.</p>
-<br>
+  <p>In this image, we tried getting Cubeman to do the splits with its arms raised. We also made it all blue instead of red. This was done by changing color values and applying rotations and translations to the arms and legs of cubeman.</p>
+  <br>
 <h2 align="middle">Section II: Sampling</h2>
 
 <h3 align="middle">Part 4: Barycentric coordinates</h3>
   <p>Barycentric coordinates are a way for us to know a points position relative to our triangle and its points. In the image below, have our points, A (blue), B (green), and C (red). The barycentric coordinate system is based on a weighted average of the distance from each of the three points. This weighting looks like αA + βB + γC. If we compute a point in the triangle has a high α value and a low β and γ, we know it is close to the A (Blue) point. Because of this, we know it will be a color very close to blue, as blue would be highly weighted in the equation above, which we would use to determine the color of that point relative to green and red, the other colors.  </p>
+  <p>This concept easily translated into our code. Instead of taking in one color for all the points in our triangle, we calculate α and β, then use (1 - α - β) to find γ, and utilize the weighting function to find what color to use for each pixel. If any of these three variables are negative, then we know the point is outside of our triangle.</p>
   <div align="middle">
     <table style="width=100%">
       <tr>
@@ -181,6 +181,9 @@
     </table>
   </div>
   <br>
-
+  <br>
+  <br>
+  <br>
+  <p> Check out the website: <b>https://cal-cs184-student.github.io/project-webpages-sp23-atdwfd/proj1/index.html </b></p>
 </body>
 </html>
