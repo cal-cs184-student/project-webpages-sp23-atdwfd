@@ -1,0 +1,211 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>  
+    div.padded {  
+      padding-top: 0px;  
+      padding-right: 100px;
+      padding-bottom: 0.25in;  
+      padding-left: 100px;
+    }  
+  </style> 
+<title>Project 3-2 |  CS 184</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="style.css" media="screen" />
+</head>
+<body>
+<br />
+<h1 align="middle">Assignment 3-2: Additional Features to PathTracer</h1>
+    <h2 align="middle">Ayah Abushama, Arturo Flores</h2>
+    <h2 align="middle">https://cal-cs184-student.github.io/project-webpages-sp23-atdwfd/proj3-2/index.html</h2>
+
+    <div class="padded">
+
+        
+        <br><br>
+        <h3 align="middle">Overview</h3>
+        <p>
+            For this project, we chose to implement parts one and two. In part one, Mirror and Glass Materials, we worked
+            on implementing reflection and refraction on the spheres in our scene, as well as how this would work with
+            glass to make things look more realistic. In part 2, Microfacet Material, we worked on implementing reflections
+            to give the look of different materials with varying roughness.
+        </p><br>
+
+
+
+        <h3 align="middle">Part 1. Mirror and Glass Materials</h3>
+
+        <p><b>
+            Show a sequence of six images of scene `CBspheres.dae` rendered with `max_ray_depth` set to 0, 1, 2, 3, 4, 5, and 100. The other settings should be at least 64 samples per pixel and 4 samples per light. Make sure to include all screenshots.
+        </b></p>
+        <div align="middle">
+            <table style="width:100%">
+                <tr align="center">
+                    <td>
+                        <img src="images/1.1m0.png" align="middle" width="400px"/>
+                        <figcaption>max_ray_depth = 0</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/1.1m1.png " align="middle" width="400px"/>
+                        <figcaption>max_ray_depth = 1</figcaption>
+                    </td>
+                </tr>
+                <tr align="center">
+                    <td>
+                        <img src="images/1.1m2.png" align="middle" width="400px"/>
+                        <figcaption>max_ray_depth = 2</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/1.1m3.png" align="middle" width="400px"/>
+                        <figcaption>max_ray_depth = 3</figcaption>
+                    </td>
+                </tr>
+                <tr align="center">
+                    <td>
+                        <img src="images/1.1m4.png" align="middle" width="400px"/>
+                        <figcaption>max_ray_depth = 4</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/1.1m5.png" align="middle" width="400px"/>
+                        <figcaption>max_ray_depth = 5</figcaption>
+                    </td>
+                </tr>
+                <tr align="center">
+                    <td>
+                        <img src="images/1.1m100.png" align="middle" width="400px"/>
+                        <figcaption>max_ray_depth = 100</figcaption>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <br>
+
+        <p align="middle">
+            all of the above images were rendered using the command <b>-t 8 -s 256 -l 4 -m MAX_RAY_DEPTH -r 480 360 -f FILENAME.png ../dae/sky/CBspheres.dae</b>
+        </p>
+        <br>
+        <p><b>
+            Point out the new multibounce effects that appear in each image. 
+        </b></p>
+        <p>
+            At max_ray_depth = 0, we only see the light source at the top of the scene. This shows only the light coming
+            straight into the camera. At max_ray_depth = 1, we can now see a lot more of the scene. We are able to see
+            much of the walls and the light that directly hits the surface of the spheres, as there is a little bit of
+            glare on them. At this stage, we cannot clearly see the ceiling or its corners. At max_ray_depth = 2, we can
+            now see a nice reflection in the left sphere, but the ceiling in it looks like the render before it, and colors of
+            the walls on the right sphere. We can also more clearly see the ceiling and its corners. At max_ray_depth = 3,
+            we now see light coming through the right sphere, and see a lit ceiling in the left sphere. The right sphere
+            is still black in the view of the left sphere. At max_ray_depth = 4, the right sphere is no longer black in
+            the left sphere. At max_ray_depth = 5 and max_ray_depth = 100, we don't see much difference from max_ray_depth = 4,
+            however we can see that the glares coming through and presented on the right sphere are becoming visibly brighter.
+        </p>
+        <br>
+        <p><b>
+            Explain how these bounce numbers relate to the particular effects that appear. Make sure to include all screenshots.
+        </b></p>
+        <p>
+            These bounce numbers relate directly to the effects that appear at each step. When we have zero bounces, we
+            are only seeing light that comes straight into the camera. The only light that does this is that which comes
+            straight from the light source, which is why that is the only lit portion when max_ray_depth = 0. With one more
+            bounce, we can now see the light that directly hits objects and walls. This is why we see glare on the spheres,
+            that then comes to the camera, but no other light from them. This is also why we cannot see the
+            ceiling - there is no light from the source directly hitting it. With two bounces, we can now see
+            a lot more light on the spheres, as we now see the light not only directly hitting them, but also the light
+            landing on them from the walls.
+            With one more bounce, we see a lot more light from the right sphere,
+            including some light coming through it onto the ground. This is because we have enough bounces to bounce
+            through the sphere onto the floor at this point, which is why with one more bounce, we can see the light from
+            the floor reflecting back on to the sphere, and we now see glare on the top and bottom of the right sphere.
+            With more bounces, we see diminishing returns, but as we would expect, since more light bounces back and forth,
+            the glare spots become a little brighter, as mentioned before.
+        </p>
+        <br>
+
+
+
+        <h3 align="middle">Part 2. Microfacet Material</h3>
+        <p><b>
+            Show a screenshot sequence of 4 images of scene `CBdragon_microfacet_au.dae` rendered with $\alpha$ set to 0.005, 0.05, 0.25 and 0.5. The other settings should be at least 128 samples per pixel and 1 samples per light. The number of bounces should be at least 5. Describe the differences between different images. Note that, to change the $\alpha$, just open the .dae file and search for `microfacet`.
+        </b></p>
+        <p>
+            </b></p>
+        <div align="middle">
+            <table style="width:100%">
+                <tr align="center">
+                    <td>
+                        <img src="images/2.1dragon-a.005.png" align="middle" width="400px"/>
+                        <figcaption>alpha = .005</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/2.1dragon-a.05.png" align="middle" width="400px"/>
+                        <figcaption>alpha = .05</figcaption>
+                    </td>
+                </tr>
+                <tr align="center">
+                    <td>
+                        <img src="images/2.1dragon-a.25.png" align="middle" width="400px"/>
+                        <figcaption>alpha = .25</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/2.1dragon-a.5.png" align="middle" width="400px"/>
+                        <figcaption> alpha = .5</figcaption>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <p>
+            Alpha represents the roughness of the material. As alpha increases, the material of the dragon seems to diffuse more and have less of a gloss. It is also noticeable lighter the more it increases, and the noisy dots decrease as alpha increases. At .25, the dragon gets the yellowish highlights it did not have before, and the dark reflection is minimized. At .5, it looks like the dragon has an almost rough texture, far from the mirror-like texture that is shown when alpha = .005. The more alpha increases, the more it is a metal reflecting light, rather than a mirror.
+        </p>
+        </p>
+        <br>
+        <p><b>
+            Show two images of scene `CBbunny_microfacet_cu.dae` rendered using cosine hemisphere sampling (default) and your importance sampling. The sampling rate should be fixed at 64 samples per pixel and 1 samples per light. The number of bounces should be at least 5. Briefly discuss their difference.
+        </b></p>
+        <p>
+        <div align="middle">
+            <table style="width:100%">
+                <tr align="center">
+                    <td>
+                        <img src="images/2.1bunny_hemisphere.png" align="middle" width="400px"/>
+                        <figcaption>With hemisphere sampling</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/2.1bunny_importance.png" align="middle" width="400px"/>
+                        <figcaption>With importance sampling</figcaption>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <p>
+            Hemispheric sampling is much noisier than importance sampling, and took considerably longer to render. In importance sampling the image is converged much faster and therefore with more precision
+        </p>
+        </p>
+        <br>
+        <p><b>
+            Show at least one image with some other conductor material, replacing `eta` and `k`. Note that you should look up values for real data rather than modifying them arbitrarily. Tell us what kind of material your parameters correspond to.
+        </b></p>
+        <p>
+        <div align="middle">
+            <table style="width:100%">
+                <tr align="center">
+                    <td>
+                        <img src="images/2.1dragon_almn.png" align="middle" width="400px"/>
+                        <figcaption>Aluminium dragon(eta = (1.8795 1.5472 1.1353), k = (5.1076 4.6437 3.9980)) as the conductor material</figcaption>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        </p>
+
+        <h3 align="Left">Working with a partner</h3>
+        <p> Working on this project together was an enjoyable experience, although this was the first one where we didn't
+            have a good chance to meet up to work together due to scheduling issues. Because of this, much of our work was
+            done asynchronously, but we did consult each other when running into any bugs. We find that together makes it
+            a lot easier to digest new material, as you have someone to consult if you're confused about anything or someone
+            to potentially correct any misconceptions you might have about a topic.
+        </p>
+        <br>
+    </div>
+</body>
+</html>
+
