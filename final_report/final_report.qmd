@@ -1,0 +1,203 @@
+---
+title: "Final Report: Lock Free Parallel Buddhabrot Rendering"
+subtitle: "CS 184: Computer Graphics and Imaging, Spring 2023"
+author: "Arturo Flores, Ayah Abushama, Isolde Fang, Jakob Sorensen"
+---
+# Video
+https://drive.google.com/file/d/1nrOErhFfT74fbMbEt_84sfd5yAf2pae6/view?usp=sharing
+
+# Abstract
+
+This project implements an OpenGL renderer that visualizes the Mandelbrot set
+through an alternate technique where we track the trajectory of values _not_ in
+the Mandelbrot set (i.e., those that _do_ converge to infinity) and render a
+probability distribution of the result. Such an image is called the Buddhabrot,
+originally invented by Melinda Greene. The renderer is self standing and does
+not depend on code from any of the course projects. The generation of the
+probability distribution was made multithreaded and lock free via use of
+compare-and-swap instructions (through the C++ standard library, if the hardware
+permits). We observed a 17x speed up over the single threaded code and could
+easily render 4K images with hundreds of millions of samples in minutes.
+Finally, the application supports interactive modification of the image,
+processed by the fragment shader and controlled by the keyboard.
+
+# Technical approach
+
+Our project uses a variation of the the Mandelbrot set, which consists of the
+values $c \in \mathbb{C}$ for which the recursive function defined by $$z_i =
+z_{i - 1}^2 + c, z_0 = 0$$ _does not_ diverge to infinity. In our case, we are
+only interested in those values that _do_ diverge to infinity. 
+
+We'll now describe the algorithm at a high level. We begin by initializing a
+two-dimensional array $a$ of integers to zeros, with each integer corresponding
+to a pixel in the final image. From here, we sample $n$ random complex numbers
+within a defined rectangle $r$ on the complex plane. For each, we check if it
+diverges within $k$ iterations (i.e., does it diverge by $z_k$?).  If it does
+not, we discard it. If it does, we track it's trajectory, $\{z_0, z_1, \dots,
+z_k\}$ and for each $z_i$ check if it's inside $r$. If so, we get the
+corresponding pixel coordinates and increment the integer in the array $a$ at
+those coordinates by 1. We sample many $c$ values (on the order of one hundred
+million to one billion), each time following this process and updating $a$. At
+the end, $a$ in effect serves as the _probability distribution_ of the
+trajectories values take on their way to infinity. We lastly normalize these
+values to between 0 and 1, where the value for each pixel signifies its
+brightness.  Though the mathematics seem simple, tremendous complexity and
+beauty emerge.
+
+At this point, we have an image of a single color, with the shape visible only
+through variations in brightness. What if we'd like multiple colors? For this,
+we set a separate iteration limit $k$ for each of the color channels ($k_r$,
+$k_g$, $k_b$). Then, instead of a single integer corresponding to a pixel in
+$a$, we have three. We track the brightness levels for each independently, and
+also normalize them independently. Once normalized, we multiply the values by
+255 to produce unsigned integers usable by OpenGL.
+
+As aforementioned, we chose to start our project from scratch, implementing the
+OpenGL context and window management code ourselves, as opposed to using any
+starting code from the projects or other similar resources. Our primary resource
+for accomplishing this was the OpenGL documentation[^1] and the great Learn
+OpenGL online tutorials[^2]. Some tools and libraries we used in implementing
+the the project include C++20, CMake, GLM, and GLFW 3.3.
+
+[^1]: <https://docs.gl/>
+
+[^2]: <https://learnopengl.com/Getting-started/OpenGL>
+
+
+The general pipeline of the program is as follows: provide input parameters,
+sample complex numbers and evaluate the resulting trajectories, normalize the
+distribution, write the results to an OpenGL texture, and lastly render it onto
+a quad spanning the entire screen. The render can be further tuned by the user
+through uniforms fed to the shader and controlled by the keyboard. These include 
+the intensity of the red, green, and blue values, as well as brightness generally. 
+ 
+In order to speed up the rendering of our image, we made the generation of the
+image multithreaded (while still being lock free). This is done during a phase
+with especially heavy computation, the sampling and evaluation phase. In the our
+moderl, each thread is responsible for a subset of the total number of
+samples. Each thread has access to its own random number generator, and running
+maximum values for each of channels (for the sake of normalization). However,
+they must all write to the same array $a$. To avoid significant slow downs due
+to locks, we implemented the buffer with C++ atomic values, which, if the
+hardware provides the capability, allows multiple threads to read and write to
+the buffer without locking. In a rendering with 100 million samples and $k_r =
+200$, $k_g = 100$, $k_b = 150$, we saw a 17x rendering speedup, with it taking
+920 seconds without multithreading and only 54 seconds with 20 threads. 
+
+Note that we had considered two alternate approaches -- fragment shaders and
+compute shaders.  We decided against the former because the operation is not
+done _per pixel_; the latter would possibly have provided significant speedups,
+but we decided against it as (1) we are unfamiliar with compute shaders, (2)
+their use requires newer versions of OpenGL, and (3) debugging would be made
+difficult.
+
+The algorithm was first implemented based on the description found in the
+Wikipedia article[^3]. We found greater insights about the problem from an
+article by James Greene[^4], the inventor of the method, and an article by Alex
+Boswell[^5]. At the debugging stage, we consulted a CalTech webpage[^6] that
+gives high level instructions for a simpler Buddhabrot rendering project.
+
+[^3]: <https://en.wikipedia.org/wiki/Buddhabrot>
+[^4]: <https://superliminal.com/fractals/bbrot/>
+[^5]: <http://www.steckles.com/buddha/>
+[^6]: <http://courses.cms.caltech.edu/cs11/material/advcpp/bbrot-1/index.html>
+
+## Problems encountered
+
+We had a different project idea up until the milestone, the rendering of
+theoretical human traversable wormholes, but we were blocked for many days
+without results. We had seemed to implement all of the necessary steps but the
+resulting image was still not as expected. The wormhole was intended to conenct
+two "sections" of the universe (two images in our case), but inexplicably, only
+one was ever visible. The difficulty was due to the fact that the entirety of
+the project was based on advcaned theoretical physics, of which none of us were
+familiar. After being unable to make progress for many long days, we decided to
+switch to our current project: lock-free parallel Buddhabrot rendering. The
+process of deciding to abandon our old project and start a new one from scratch
+was tough but was worth it. Thankfully, we were able to utilize the code that 
+handled window management and the OpenGL context.
+
+We were able to get basic renderings in a reasonable amount of time, but they
+were at a crooked and cropped in an unusual way. This blocked us for a while,
+but after longer than we'd like to admit, we finally found the issue: an innocuous 
+division with a complex number, which was intended to be done component wise (in
+contradiction of the definition of division for complex numbers). Our debugging
+process involved regular debugging (via GDB) and outputting values via print
+statements while interacting with the program. 
+
+There were also issues related to data races after multithreading was
+implemented. These were resolved by minimizing the dependencies threads have on
+each other, giving them each their own random number generator and local maximum
+brightness values. The latter were then accumulated once the threads had all
+completed. We made the only value shared among the threads the buffer of
+brightness values ($a$ in the description above). These errors showed up in
+subtle ways and were hard to spot. In the case of forgetting to synchronize
+access to the random number generator, there were only subtle light lines
+crossing regions of the screen.
+
+## Lessons learned
+
+While it was definitely fulfilling building something from scratch, most of the
+group didn’t have a strong conceptual understanding of the mathematical
+concepts. There was an added difficulty of building the OpenGL application from
+scratch, which introduced both a new concept to learn to debug as well as added
+confusion. This, however, made the end result all the more rewarding — it was
+all code we produced and took time to thoroughly understand.
+
+Parallelizing only one step of the rendering process allowed for a 17x speedup,
+but again, added the issue of race conditions. This added a random factor to the
+debugging process that varied from one computer to another. Implementing
+multithreading in a lock-free manner was optimal in terms of speed up, but
+proved to be difficult to debug. Realizing this would have been an issue from
+early on and accounting for it is a heavy lesson taken from this project.
+
+# Results
+
+![](low_iter_1.png)
+
+![](low_iter_2.png)
+
+![](zoom_in_1.png)
+
+![](zoom_out_1.png)
+
+![](zoom_out_2.png)
+
+![](zoom_out_3.png)
+
+# References
+
+<http://courses.cms.caltech.edu/cs11/material/advcpp/bbrot-1/index.html>
+
+<https://www.youtube.com/watch?v=FFftmWSzgmk&pp=ygUKbWFuZGVsYnJvdA%3D%3D>
+
+<https://en.wikipedia.org/wiki/Buddhabrot>
+
+<https://superliminal.com/fractals/bbrot/>
+
+<http://www.steckles.com/buddha/>
+
+<https://docs.gl/>
+
+<https://learnopengl.com/Getting-started/OpenGL>
+
+
+
+# Contributions from each team member
+
+Jakob took the lead on the project, with a stronger conceptual understanding
+than the rest of the group. He led the implementation of the project code,
+including the OpenGL context, Buddhabrot related calculations,
+multithreading, and input management.
+
+Isolde worked primarily on building the shader core, as well as with debugging
+the various issues that popped up, as well as the slides and website.
+
+Arturo and Ayah both also aided in debugging the various issues that occurred as
+the core of the project code was being built up, as well as the slides and
+website.
+
+# Clip for Showcase 
+
+<https://drive.google.com/file/d/1FX2--diUYGNsg-ow1VjY9-I9zrMXxgB-/view?resourcekey>
+
